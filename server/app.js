@@ -82,6 +82,30 @@ app.get('/login',
     res.render('login');
   });
 
+app.post('/login',
+  (req, res, next) => {
+    models.Users.get({username: req.body.username})
+      .then((user) => {
+        if (user) {
+          var checkPassword = models.Users.compare(req.body.password, user.password, user.salt);
+          if (checkPassword) {
+            res.redirect('/');
+          } else {
+            console.log('Wrong password');
+            res.redirect('/login');
+          }
+
+        } else {
+          console.log('User not found');
+          res.redirect('/login');
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+        res.redirect('/login');
+      });
+  });
+
 app.get('/signup',
   (req, res) => {
     res.render('signup');
