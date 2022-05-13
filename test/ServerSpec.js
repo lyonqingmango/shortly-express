@@ -378,6 +378,7 @@ describe('', function() {
 
         createSession(requestWithoutCookies, response, function() {
           var session = requestWithoutCookies.session;
+          console.log('from spec', session.hash);
           expect(session).to.exist;
           expect(session).to.be.an('object');
           expect(session.hash).to.exist;
@@ -480,7 +481,7 @@ describe('', function() {
     });
   });
 
-  xdescribe('Sessions and cookies', function() {
+  describe('Sessions and cookies', function() {
     var requestWithSession;
     var cookieJar;
 

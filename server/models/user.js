@@ -20,6 +20,7 @@ class Users extends Model {
    * @returns {boolean} A boolean indicating if the attempted password was correct.
    */
   compare(attempted, password, salt) {
+
     return utils.compareHash(attempted, password, salt);
   }
 
