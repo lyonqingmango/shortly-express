@@ -17,18 +17,17 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use(Cookie);
 app.use(Auth.createSession);
 
+app.get('/', Auth.verifySession,
+  (req, res) =>
+    (res.render('index'))
+);
 
-app.get('/',
+app.get('/create', Auth.verifySession,
   (req, res) => {
     res.render('index');
   });
 
-app.get('/create',
-  (req, res) => {
-    res.render('index');
-  });
-
-app.get('/links',
+app.get('/links', Auth.verifySession,
   (req, res, next) => {
     models.Links.getAll()
       .then(links => {
@@ -91,20 +90,21 @@ app.post('/login',
         if (user) {
           var checkPassword = models.Users.compare(req.body.password, user.password, user.salt);
           if (checkPassword) {
-            res.redirect('/');
+            models.Sessions.update({hash: req.session.hash}, {userId: user.id})
+              .then(() => { res.redirect('/'); }
+              );
           } else {
-            console.log('Wrong password');
+            res.status(400);
             res.redirect('/login');
           }
 
         } else {
-          console.log('User not found');
+          res.status(400);
           res.redirect('/login');
         }
       })
       .catch((err) => {
         console.log(err);
-        res.redirect('/login');
       });
   });
 
@@ -115,31 +115,48 @@ app.get('/signup',
 
 app.post('/signup',
   (req, res, next) => {
+    var username = req.body.username;
+    var password = req.body.password;
+    if (username === '' || password === '') {
+      res.status(400);
+      res.redirect('/signup');
+    }
     models.Users.get({username: req.body.username})
-      .then((username) => {
+      .then(username => {
         if (username) {
+          res.status(400);
           res.redirect('/signup');
         } else {
-          models.Users.create({ username: req.body.username,
+          return models.Users.create({ username: req.body.username,
             password: req.body.password })
-            .then((result) => {
-              console.log(result);
-              res.redirect('/');
+            .then(user => {
+              var id = user.insertId;
+              var hash = req.session.hash;
+              models.Sessions.update({hash: hash}, {userId: id})
+                .then(() => { res.redirect('/'); });
             })
-            .catch(err => {
-              console.log('err inside signup post' + err);
-              res.status(500).send(error);
-            // res.status(200).send(link);
-            });
+            .catch( err => console.log('error on sign up'));
         }
       });
   });
+
+
+app.get('/logout', (req, res, next) => {
+  models.Sessions.delete({hash: req.session.hash})
+    .then(() => {
+      res.clearCookie('shortlyid');
+      res.status(201).redirect('/');
+    });
+});
+
+
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail
 // assume the route is a short code and try and handle it here.
 // If the short-code doesn't exist, send the user to '/'
 /************************************************************/
+
 
 app.get('/:code', (req, res, next) => {
 
